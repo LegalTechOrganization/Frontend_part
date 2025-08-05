@@ -47,7 +47,7 @@ const Library = () => {
 
             {/* Categories */}
             <div className="flex gap-4 overflow-x-auto pb-2">
-                {promptCategories.map((category, index) => (
+                {promptCategories.map((category) => (
                     <button
                         key={category.name}
                         className={`flex-shrink-0 px-6 py-3 rounded-2xl transition-all duration-200 ${

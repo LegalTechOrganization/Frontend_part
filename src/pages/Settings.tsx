@@ -1,8 +1,21 @@
 import { motion } from 'framer-motion';
-import { Settings as SettingsIcon, User, Lock, Bell, Palette, Shield } from 'lucide-react';
+import { Settings as SettingsIcon, User, Lock, Bell, Palette } from 'lucide-react';
+
+// Типы для настроек
+type SettingItem = 
+  | { label: string; value: string; type: 'input' }
+  | { label: string; type: 'button' }
+  | { label: string; value: boolean; type: 'toggle' }
+  | { label: string; value: string; type: 'select'; options: string[] };
+
+type SettingsSection = {
+    title: string;
+    icon: any;
+    items: SettingItem[];
+};
 
 const Settings = () => {
-    const settingsSections = [
+    const settingsSections: SettingsSection[] = [
         {
             title: 'Профиль',
             icon: User,
@@ -77,14 +90,14 @@ const Settings = () => {
                             </div>
 
                             <div className="space-y-6">
-                                {section.items.map((item, itemIndex) => (
+                                {section.items.map((item) => (
                                     <div key={item.label} className="space-y-2">
                                         <label className="text-sm font-medium text-ink/80">{item.label}</label>
                                         
                                         {item.type === 'input' && (
                                             <input
                                                 type="text"
-                                                defaultValue={item.value}
+                                                defaultValue={typeof item.value === 'string' ? item.value : ''}
                                                 className="w-full px-4 py-3 rounded-xl border border-ink/20 focus:border-gold focus:ring-2 focus:ring-gold/20 outline-none transition-all duration-200"
                                             />
                                         )}
@@ -103,9 +116,12 @@ const Settings = () => {
                                         )}
                                         
                                         {item.type === 'select' && (
-                                            <select className="w-full px-4 py-3 rounded-xl border border-ink/20 focus:border-gold focus:ring-2 focus:ring-gold/20 outline-none transition-all duration-200">
-                                                {item.options?.map(option => (
-                                                    <option key={option} selected={option === item.value}>{option}</option>
+                                            <select 
+                                                className="w-full px-4 py-3 rounded-xl border border-ink/20 focus:border-gold focus:ring-2 focus:ring-gold/20 outline-none transition-all duration-200"
+                                                defaultValue={item.value}
+                                            >
+                                                {item.options.map(option => (
+                                                    <option key={option} value={option}>{option}</option>
                                                 ))}
                                             </select>
                                         )}

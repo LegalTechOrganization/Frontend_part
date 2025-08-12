@@ -1,17 +1,19 @@
 import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState } from 'react';
-import { ChevronLeft, ChevronRight, Lock, Settings, User, Home } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Lock, DollarSign, User, Home, FileText } from 'lucide-react';
 
 const navItems = [
   { path: '/', label: 'Главное', icon: Home },
   { path: '/vault', label: 'Vault', icon: Lock, soon: true },
-  { path: '/library', label: 'Library', icon: null },
+  // Временно отключено для MVP
+  // { path: '/library', label: 'Library', icon: null },
 ];
 
 const bottomNavItems = [
-  { path: '/settings', label: 'Настройки', icon: Settings },
-  { path: '/billing', label: 'Кабинет', icon: User },
+  { path: '/prices', label: 'Цены', icon: DollarSign },
+  { path: '/account', label: 'Кабинет', icon: User },
+  { path: '/offer', label: 'Оферта', icon: FileText },
 ];
 
 const Sidebar = () => {
@@ -88,7 +90,7 @@ const Sidebar = () => {
                       animate={{ opacity: 1, x: 0 }}
                       exit={{ opacity: 0, x: -10 }}
                       transition={{ duration: 0.2 }}
-                      className={`ml-4 font-medium ${Icon ? '' : 'ml-0'}`}
+                      className="ml-4 font-medium"
                     >
                       {label}
                       {soon && <span className="ml-2 text-xs opacity-60">(Скоро)</span>}

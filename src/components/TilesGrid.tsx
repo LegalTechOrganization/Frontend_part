@@ -1,26 +1,28 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Search, FileText, Scale, Users, Calendar, Shield, Briefcase, BookOpen, TrendingUp, Archive, Settings, Zap, Gavel, Building, UserCheck } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const functionCards = [
-  { id: 1, title: 'Досудебная претензия по договору поставки', description: 'Автоматическое создание претензии при нарушении условий поставки', icon: FileText, color: 'from-gold/20 to-gold/10' },
-  { id: 2, title: 'Исковое заявление о взыскании задолженности', description: 'Генерация искового заявления для взыскания долгов по договорам', icon: Gavel, color: 'from-petrol/20 to-petrol/10' },
-  { id: 3, title: 'Трудовой договор', description: 'Создание трудового договора с учетом ТК РФ', icon: UserCheck, color: 'from-sage/20 to-sage/10' },
-  { id: 4, title: 'Договор поставки', description: 'Типовой договор поставки товаров с настройками', icon: Briefcase, color: 'from-gold/20 to-gold/10' },
-  { id: 5, title: 'Отзыв на исковое заявление', description: 'Подготовка возражений и отзыва ответчика', icon: Scale, color: 'from-petrol/20 to-petrol/10' },
-  { id: 6, title: 'Протокол собрания участников ООО', description: 'Оформление решений общего собрания участников', icon: Building, color: 'from-sage/20 to-sage/10' },
-  { id: 7, title: 'Претензия по защите прав потребителей', description: 'Претензия для защиты прав потребителей товаров и услуг', icon: Shield, color: 'from-gold/20 to-gold/10' },
-  { id: 8, title: 'Договор оказания услуг', description: 'Универсальный договор на оказание различных услуг', icon: Settings, color: 'from-petrol/20 to-petrol/10' },
-  { id: 9, title: 'Приказ об увольнении', description: 'Оформление приказа об увольнении по различным основаниям', icon: Users, color: 'from-sage/20 to-sage/10' },
-  { id: 10, title: 'Договор купли-продажи доли в ООО', description: 'Сделки с долями в уставном капитале общества', icon: TrendingUp, color: 'from-gold/20 to-gold/10' },
-  { id: 11, title: 'Претензия по возврату денежных средств', description: 'Требование о возврате неосновательно полученных средств', icon: Archive, color: 'from-petrol/20 to-petrol/10' },
-  { id: 12, title: 'Дополнительное соглашение к договору', description: 'Изменение условий действующих договоров', icon: BookOpen, color: 'from-sage/20 to-sage/10' },
-  { id: 13, title: 'Ходатайство о продлении срока', description: 'Процессуальные документы для продления сроков в суде', icon: Calendar, color: 'from-gold/20 to-gold/10' },
-  { id: 14, title: 'Договор аренды нежилого помещения', description: 'Аренда офисов, складов и коммерческих помещений', icon: Building, color: 'from-petrol/20 to-petrol/10' },
-  { id: 15, title: 'Заявление о выдаче исполнительного листа', description: 'Документы для принудительного исполнения решений', icon: Zap, color: 'from-sage/20 to-sage/10' },
+  { id: 1, slug: 'pretension', title: 'Досудебная претензия по договору поставки', description: 'Автоматическое создание претензии при нарушении условий поставки', icon: FileText, color: 'from-gold/20 to-gold/10' },
+  { id: 2, slug: 'lawsuit', title: 'Исковое заявление о взыскании задолженности', description: 'Генерация искового заявления для взыскания долгов по договорам', icon: Gavel, color: 'from-petrol/20 to-petrol/10' },
+  { id: 3, slug: 'employment-contract', title: 'Трудовой договор', description: 'Создание трудового договора с учетом ТК РФ', icon: UserCheck, color: 'from-sage/20 to-sage/10' },
+  { id: 4, slug: 'supply-contract', title: 'Договор поставки', description: 'Типовой договор поставки товаров с настройками', icon: Briefcase, color: 'from-gold/20 to-gold/10' },
+  { id: 5, slug: 'response', title: 'Отзыв на исковое заявление', description: 'Подготовка возражений и отзыва ответчика', icon: Scale, color: 'from-petrol/20 to-petrol/10' },
+  { id: 6, slug: 'protocol', title: 'Протокол собрания участников ООО', description: 'Оформление решений общего собрания участников', icon: Building, color: 'from-sage/20 to-sage/10' },
+  { id: 7, slug: 'consumer-claim', title: 'Претензия по защите прав потребителей', description: 'Претензия для защиты прав потребителей товаров и услуг', icon: Shield, color: 'from-gold/20 to-gold/10' },
+  { id: 8, slug: 'service-contract', title: 'Договор оказания услуг', description: 'Универсальный договор на оказание различных услуг', icon: Settings, color: 'from-petrol/20 to-petrol/10' },
+  { id: 9, slug: 'dismissal-order', title: 'Приказ об увольнении', description: 'Оформление приказа об увольнении по различным основаниям', icon: Users, color: 'from-sage/20 to-sage/10' },
+  { id: 10, slug: 'share-sale', title: 'Договор купли-продажи доли в ООО', description: 'Сделки с долями в уставном капитале общества', icon: TrendingUp, color: 'from-gold/20 to-gold/10' },
+  { id: 11, slug: 'refund-claim', title: 'Претензия по возврату денежных средств', description: 'Требование о возврате неосновательно полученных средств', icon: Archive, color: 'from-petrol/20 to-petrol/10' },
+  { id: 12, slug: 'additional-agreement', title: 'Дополнительное соглашение к договору', description: 'Изменение условий действующих договоров', icon: BookOpen, color: 'from-sage/20 to-sage/10' },
+  { id: 13, slug: 'extension-request', title: 'Ходатайство о продлении срока', description: 'Процессуальные документы для продления сроков в суде', icon: Calendar, color: 'from-gold/20 to-gold/10' },
+  { id: 14, slug: 'lease-agreement', title: 'Договор аренды нежилого помещения', description: 'Аренда офисов, складов и коммерческих помещений', icon: Building, color: 'from-petrol/20 to-petrol/10' },
+  { id: 15, slug: 'execution-request', title: 'Заявление о выдаче исполнительного листа', description: 'Документы для принудительного исполнения решений', icon: Zap, color: 'from-sage/20 to-sage/10' },
 ];
 
 const TilesGrid = () => {
+    const navigate = useNavigate();
     const [searchQuery, setSearchQuery] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 9;
@@ -72,6 +74,7 @@ const TilesGrid = () => {
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: 0.4, delay: index * 0.1 }}
                             whileHover={{ y: -12, transition: { duration: 0.3 } }}
+                            onClick={() => navigate(`/document/${card.slug}`)}
                             className="group cursor-pointer"
                         >
                             <div className="bg-white rounded-3xl p-8 shadow-xl hover:shadow-2xl transition-all duration-500 border-2 border-gold/10 hover:border-gold/30 h-full flex flex-col">

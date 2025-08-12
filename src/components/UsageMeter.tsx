@@ -1,42 +1,65 @@
 import { motion } from 'framer-motion';
-import { BarChart3, FileText, MessageSquare, Database, Zap } from 'lucide-react';
+import { BarChart3, FileText, MessageSquare, Database, Zap, Loader2 } from 'lucide-react';
+import { useSubscription } from '../hooks/useSubscription';
 
 const UsageMeter = () => {
+    const { subscription, balance, loading, error } = useSubscription();
+
+    // Рассчитываем использование на основе реальных данных
+    const monthlyLimit = subscription?.plan?.monthly_units || 3000;
+    const currentUsage = monthlyLimit - (balance?.balance_units || 0);
+
     const usageStats = [
         {
+            label: 'Единицы использованы',
+            current: currentUsage,
+            limit: monthlyLimit,
+            icon: Zap,
+            color: 'from-gold/60 to-gold/40',
+            bgColor: 'bg-gold/10'
+        },
+        {
             label: 'Документы проанализированы',
-            current: 127,
-            limit: 200,
+            current: Math.floor(currentUsage * 0.15), // Примерное соотношение
+            limit: Math.floor(monthlyLimit * 0.15),
             icon: FileText,
-            color: 'from-blue-500 to-blue-600',
-            bgColor: 'bg-blue-100'
+            color: 'from-petrol/60 to-petrol/40',
+            bgColor: 'bg-petrol/10'
         },
         {
             label: 'Чаты с AI',
-            current: 1250,
-            limit: 2000,
+            current: Math.floor(currentUsage * 0.6), // Основное использование
+            limit: Math.floor(monthlyLimit * 0.6),
             icon: MessageSquare,
-            color: 'from-green-500 to-green-600',
-            bgColor: 'bg-green-100'
+            color: 'from-sage/60 to-sage/40',
+            bgColor: 'bg-sage/10'
         },
         {
-            label: 'Хранилище',
-            current: 2.4,
-            limit: 10,
+            label: 'Остаток единиц',
+            current: balance?.balance_units || 0,
+            limit: monthlyLimit,
             icon: Database,
-            color: 'from-purple-500 to-purple-600',
-            bgColor: 'bg-purple-100',
-            unit: 'ГБ'
-        },
-        {
-            label: 'API запросы',
-            current: 8450,
-            limit: 15000,
-            icon: Zap,
-            color: 'from-orange-500 to-orange-600',
-            bgColor: 'bg-orange-100'
+            color: 'from-ink/60 to-ink/40',
+            bgColor: 'bg-ink/10'
         }
     ];
+
+    if (loading) {
+        return (
+            <div className="bg-white rounded-3xl p-8 shadow-xl border border-ink/5 flex items-center justify-center h-96">
+                <Loader2 className="animate-spin text-gold" size={32} />
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="bg-white rounded-3xl p-8 shadow-xl border border-red-200 text-center">
+                <p className="text-red-600">Ошибка загрузки данных использования</p>
+                <p className="text-sm text-ink/60 mt-2">{error}</p>
+            </div>
+        );
+    }
 
     return (
         <motion.div 
@@ -75,10 +98,10 @@ const UsageMeter = () => {
                                     </div>
                                     <div>
                                         <p className="font-medium text-ink">{stat.label}</p>
-                                        <p className="text-sm text-ink/60">
-                                            {stat.current}{stat.unit || ''} из {stat.limit}{stat.unit || ''} 
-                                            <span className="ml-2 text-ink/40">({percentage.toFixed(0)}%)</span>
-                                        </p>
+                                                                                 <p className="text-sm text-ink/60">
+                                             {stat.current} из {stat.limit} 
+                                             <span className="ml-2 text-ink/40">({percentage.toFixed(0)}%)</span>
+                                         </p>
                                     </div>
                                 </div>
                             </div>

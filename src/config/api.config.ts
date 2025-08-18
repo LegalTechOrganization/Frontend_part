@@ -20,11 +20,11 @@ export const API_CONFIG = {
     
     // Пользователи
     USER_PROFILE: '/v1/client/me',
-    CHANGE_PASSWORD: '/api/user/change-password',
-    UPDATE_PROFILE: '/api/user/profile',
+    CHANGE_PASSWORD: '/v1/client/change-password',
+    UPDATE_PROFILE: '/v1/client/update',
     
     // Подписки и платежи
-    SUBSCRIPTION: '/api/user/subscription',
+    SUBSCRIPTION: '/v1/billing/subscription',
     NEXT_BILLING: '/api/user/subscription/next-billing',
     USER_BALANCE: '/api/user/balance',
     CREATE_SUBSCRIPTION_LINK: '/api/payment/create-subscription-link',

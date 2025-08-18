@@ -49,71 +49,85 @@ export const getUserProfile = async (): Promise<UserProfile> => {
  * Ручка смены пароля пользователя
  * 
  * Пользователь: вводит текущий и новый пароль в форме настроек
- * Backend: POST /api/user/change-password
+ * Backend: POST /v1/client/change-password
  * Headers: Authorization: Bearer {JWT_TOKEN}
- * Body: { current_password: string, new_password: string }
+ * Body: { old_password: string, new_password: string }
  * Response: { success: boolean, message: string }
  */
-export const changePassword = async (_data: ChangePasswordRequest): Promise<ApiResponse<null>> => {
-  // TODO: Реализовать запрос к API для смены пароля
-  // const token = storage.getToken();
-  // const response = await fetch('/api/user/change-password', {
-  //   method: 'POST',
-  //   headers: { 
-  //     'Authorization': `Bearer ${token}`,
-  //     'Content-Type': 'application/json'
-  //   },
-  //   body: JSON.stringify(data)
-  // });
-  // return response.json();
-  
-  // Мок-данные для разработки
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({
-        success: true,
-        data: null,
-        message: 'Пароль успешно изменен'
-      });
-    }, 1000);
-  });
+export const changePassword = async (data: ChangePasswordRequest): Promise<ApiResponse<null>> => {
+  const token = storage.getToken();
+  if (!token) {
+    throw new Error('Токен отсутствует. Авторизуйтесь заново.');
+  }
+
+  try {
+    const response = await fetch(API_CONFIG.ENDPOINTS.CHANGE_PASSWORD, {
+      method: 'POST',
+      headers: createAuthHeaders(token),
+      body: JSON.stringify({
+        old_password: data.current_password,
+        new_password: data.new_password
+      })
+    });
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        throw new Error('Необходима повторная авторизация');
+      }
+      throw new Error(`Ошибка смены пароля: ${response.status}`);
+    }
+
+    return { success: true, data: null, message: 'Пароль успешно изменен' };
+  } catch (error) {
+    console.error('Ошибка при смене пароля:', error);
+    throw error;
+  }
 };
 
 /**
  * Ручка обновления профиля пользователя
  * 
  * Пользователь: редактирует имя, email и компанию в кабинете и сохраняет
- * Backend: PUT /api/user/profile
+ * Backend: PATCH /v1/client/update
  * Headers: Authorization: Bearer {JWT_TOKEN}
- * Body: { full_name, email, company }
+ * Body: { full_name }
  * Response: UserProfile (обновлённый)
  */
-export const updateUserProfile = async (_data: UpdateUserProfileRequest): Promise<ApiResponse<UserProfile>> => {
-  // TODO: Реализовать запрос к API для обновления профиля пользователя
-  // const token = storage.getToken();
-  // const response = await fetch('/api/user/profile', {
-  //   method: 'PUT',
-  //   headers: {
-  //     'Authorization': `Bearer ${token}`,
-  //     'Content-Type': 'application/json'
-  //   },
-  //   body: JSON.stringify(data)
-  // });
-  // return response.json();
+export const updateUserProfile = async (data: UpdateUserProfileRequest): Promise<ApiResponse<UserProfile>> => {
+  const token = storage.getToken();
+  if (!token) {
+    throw new Error('Токен отсутствует. Авторизуйтесь заново.');
+  }
 
-  // Мок-данные для разработки: возвращаем обновлённый профиль
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      const updated: UserProfile = {
-        ...mockUserProfile,
-        full_name: _data.full_name,
-        email: _data.email,
-        metadata: {
-          ...mockUserProfile.metadata,
-          company: _data.company ?? mockUserProfile.metadata?.company
-        }
-      };
-      resolve({ success: true, data: updated, message: 'Профиль обновлён' });
-    }, 600);
-  });
+  try {
+    const response = await fetch(API_CONFIG.ENDPOINTS.UPDATE_PROFILE, {
+      method: 'PATCH',
+      headers: createAuthHeaders(token),
+      body: JSON.stringify({
+        full_name: data.full_name
+      })
+    });
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        throw new Error('Необходима повторная авторизация');
+      }
+      throw new Error(`Ошибка обновления профиля: ${response.status}`);
+    }
+
+    // Получаем обновлённые данные пользователя
+    const updatedUserData = await response.json();
+    
+    // Обновляем кеш пользователя
+    storage.setUser(updatedUserData);
+
+    return { 
+      success: true, 
+      data: updatedUserData, 
+      message: 'Профиль обновлён' 
+    };
+  } catch (error) {
+    console.error('Ошибка при обновлении профиля:', error);
+    throw error;
+  }
 };

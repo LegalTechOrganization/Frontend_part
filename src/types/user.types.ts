@@ -21,7 +21,7 @@ export interface TariffPlan {
   name: string;
   monthly_units: number;
   price_rub: number;
-  period_days: number;
+  period_days: number | null;
   is_active: boolean;
   created_at: string;
 }

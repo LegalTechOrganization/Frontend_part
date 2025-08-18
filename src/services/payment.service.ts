@@ -1,7 +1,8 @@
 import type { UserSubscription, UserBalance, PaymentLinkResponse } from '../types/user.types';
-// import type { ApiResponse } from '../types/api.types';
+import type { ApiResponse } from '../types/api.types';
 import { mockUserSubscription, mockUserBalance } from '../mock/user.mock';
-// import { storage } from '../utils/storage';
+import { storage } from '../utils/storage';
+import { API_CONFIG, createApiUrl, createAuthHeaders } from '../config/api.config';
 
 /**
  * Ручка подгрузки текущего тарифа пользователя
@@ -13,17 +14,31 @@ import { mockUserSubscription, mockUserBalance } from '../mock/user.mock';
  * Примечание: Для отображения баланса на карточке тарифа также используется getUserBalance()
  */
 export const getCurrentSubscription = async (): Promise<UserSubscription> => {
-  // TODO: Реализовать запрос к API для получения текущей подписки
-  // const token = storage.getToken();
-  // const response = await fetch('/api/user/subscription', {
-  //   headers: { 'Authorization': `Bearer ${token}` }
-  // });
-  // return response.json();
-  
-  // Мок-данные для разработки
-  return new Promise((resolve) => {
-    setTimeout(() => resolve(mockUserSubscription), 500);
-  });
+  try {
+    const token = storage.getToken();
+    if (!token) {
+      throw new Error('Токен не найден');
+    }
+
+    const response = await fetch(createApiUrl(API_CONFIG.ENDPOINTS.SUBSCRIPTION), {
+      method: 'GET',
+      headers: createAuthHeaders(token),
+    });
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        throw new Error('Неавторизованный доступ');
+      }
+      throw new Error(`Ошибка сервера: ${response.status}`);
+    }
+
+    const data: UserSubscription = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Ошибка получения данных подписки:', error);
+    // Возвращаем мок-данные в случае ошибки
+    return mockUserSubscription;
+  }
 };
 
 /**

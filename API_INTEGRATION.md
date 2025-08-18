@@ -115,7 +115,7 @@
 
 **Описание:** Пользователь заходит в ЛК, система показывает текущий тариф, дату окончания и остаток юнитов на карточке
 
-**Эндпоинт:** `GET /api/user/subscription`
+**Эндпоинт:** `GET /v1/billing/subscription`
 **Headers:** `Authorization: Bearer {JWT_TOKEN}`
 **Response:** JOIN данных из `user_plans` + `tariff_plans`
 ```typescript

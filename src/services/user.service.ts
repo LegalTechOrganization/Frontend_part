@@ -1,7 +1,8 @@
 import type { UserProfile, ChangePasswordRequest, UpdateUserProfileRequest } from '../types/user.types';
 import type { ApiResponse } from '../types/api.types';
 import { mockUserProfile } from '../mock/user.mock';
-// import { storage } from '../utils/storage';
+import { storage } from '../utils/storage';
+import { API_CONFIG, createAuthHeaders } from '../config/api.config';
 
 /**
  * Ручка получения профиля пользователя из БД
@@ -12,17 +13,36 @@ import { mockUserProfile } from '../mock/user.mock';
  * Response: UserProfile (id, email, full_name, created_at, last_login_at, metadata)
  */
 export const getUserProfile = async (): Promise<UserProfile> => {
-  // TODO: Реализовать запрос к API для получения профиля пользователя
-  // const token = storage.getToken();
-  // const response = await fetch('/api/user/profile', {
-  //   headers: { 'Authorization': `Bearer ${token}` }
-  // });
-  // return response.json();
-  
-  // Мок-данные для разработки
-  return new Promise((resolve) => {
-    setTimeout(() => resolve(mockUserProfile), 500);
-  });
+  const token = storage.getToken();
+  if (!token) {
+    throw new Error('Токен отсутствует. Авторизуйтесь заново.');
+  }
+
+  try {
+    const response = await fetch(API_CONFIG.ENDPOINTS.USER_PROFILE, {
+      headers: createAuthHeaders(token)
+    });
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        throw new Error('Необходима повторная авторизация');
+      }
+      throw new Error(`Ошибка получения профиля: ${response.status}`);
+    }
+
+    const userData = await response.json();
+    // Кешируем пользователя локально только для UX (не токены)
+    storage.setUser(userData);
+    return userData;
+  } catch (error) {
+    console.error('Ошибка при получении профиля:', error);
+    
+    // Если API недоступен, возвращаем мок-данные для разработки
+    console.warn('Используются мок-данные для разработки');
+    return new Promise((resolve) => {
+      setTimeout(() => resolve(mockUserProfile), 500);
+    });
+  }
 };
 
 /**

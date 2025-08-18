@@ -1,7 +1,8 @@
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState } from 'react';
-import { ChevronLeft, ChevronRight, Lock, DollarSign, User, Home, FileText } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Lock, DollarSign, User, Home, FileText, LogOut } from 'lucide-react';
+import { useAuth } from '../hooks/useAuth';
 
 const navItems = [
   { path: '/', label: 'Главное', icon: Home },
@@ -19,6 +20,16 @@ const bottomNavItems = [
 const Sidebar = () => {
   const { pathname } = useLocation();
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const { logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } finally {
+      navigate('/register', { replace: true });
+    }
+  };
 
   return (
     <motion.div 
@@ -133,6 +144,29 @@ const Sidebar = () => {
               </div>
             </Link>
           ))}
+          
+          {/* Кнопка выхода */}
+          <button 
+            onClick={handleLogout}
+            className="relative group block w-full"
+          >
+            <div className="flex items-center px-4 py-4 rounded-2xl transition-all duration-300 text-red-600 hover:bg-red-50 border border-transparent hover:border-red-200">
+              <LogOut size={20} className="flex-shrink-0" />
+              <AnimatePresence>
+                {!isCollapsed && (
+                  <motion.span
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -10 }}
+                    transition={{ duration: 0.2 }}
+                    className="ml-4 font-medium"
+                  >
+                    Выйти
+                  </motion.span>
+                )}
+              </AnimatePresence>
+            </div>
+          </button>
         </div>
       </nav>
     </motion.div>

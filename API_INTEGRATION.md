@@ -1,5 +1,68 @@
 # API Integration Guide
 
+## Ручки для аутентификации
+
+### 1. Ручка входа в систему
+**Файл:** `src/services/auth.service.ts` → `signIn()`
+
+**Описание:** Пользователь вводит email и пароль на странице входа
+
+**Эндпоинт:** `POST /v1/client/sign-in/password`
+**Headers:** `Content-Type: application/json`
+**Body:**
+```typescript
+{
+  email: string;
+  password: string;
+}
+```
+**Response:**
+```typescript
+{
+  jwt: string;           // JWT токен для авторизации
+  refresh_token: string; // Refresh токен
+  user: {
+    user_id: string;     // ID пользователя
+    email: string;       // Email пользователя
+    full_name: string | null; // Полное имя
+    orgs: any[];         // Организации пользователя
+  }
+}
+```
+
+---
+
+### 2. Ручка регистрации нового пользователя
+**Файл:** `src/services/auth.service.ts` → `signUp()`
+
+**Описание:** Пользователь создает новый аккаунт с email, паролем и именем
+
+**Эндпоинт:** `POST /v1/client/sign-up`
+**Headers:** `Content-Type: application/json`
+**Body:**
+```typescript
+{
+  email: string;
+  password: string;
+  full_name?: string;    // Опционально
+}
+```
+**Response:** (тот же формат, что и для входа)
+```typescript
+{
+  jwt: string;           // JWT токен для авторизации
+  refresh_token: string; // Refresh токен
+  user: {
+    user_id: string;     // ID пользователя
+    email: string;       // Email пользователя
+    full_name: string | null; // Полное имя
+    orgs: any[];         // Организации пользователя
+  }
+}
+```
+
+---
+
 ## Ручки для ЛК (Личный Кабинет)
 
 ### 1. Ручка получения профиля пользователя
@@ -136,6 +199,10 @@
 
 Все ручки уже интегрированы через React хуки:
 
+- **Login.tsx** использует `useAuth()` для входа в систему
+- **Register.tsx** использует `useAuth()` для регистрации нового пользователя
+- **App.tsx** использует `useAuth()` для защиты маршрутов
+- **Sidebar.tsx** использует `useAuth()` для кнопки выхода
 - **PlanCard.tsx** использует `useSubscription()` для отображения тарифа, остатка юнитов и кнопки продления
 - **UsageMeter.tsx** использует `useSubscription()` для показа детального использования единиц
 - **Settings.tsx** может использовать `useUser()` для профиля и смены пароля
@@ -152,3 +219,46 @@
 ## Токены
 
 Для работы с API нужно реализовать сохранение JWT токенов через `src/utils/storage.ts` (уже готово).
+
+## Конфигурация API
+
+### Проксирование в разработке
+
+В файле `vite.config.ts` настроено проксирование для разработки:
+
+```typescript
+server: {
+  proxy: {
+    '/v1': {
+      target: 'http://localhost:8002', // API Gateway
+      changeOrigin: true,
+      secure: false,
+    },
+    '/api': {
+      target: 'http://localhost:8002', // API Gateway
+      changeOrigin: true,
+      secure: false,
+    }
+  }
+}
+```
+
+Это означает, что:
+- Запросы к `/v1/*` и `/api/*` автоматически перенаправляются на `http://localhost:8002`
+- Фронтенд работает на `localhost:5173`, а API Gateway на `localhost:8002`
+- В продакшене можно настроить переменную окружения `VITE_API_BASE_URL`
+
+### Конфигурационный файл
+
+Все эндпоинты и настройки API находятся в `src/config/api.config.ts`:
+
+```typescript
+export const API_CONFIG = {
+  BASE_URL: import.meta.env.VITE_API_BASE_URL || '',
+  ENDPOINTS: {
+    SIGN_IN: '/v1/client/sign-in/password',
+    SIGN_UP: '/v1/client/sign-up',
+    // ... другие эндпоинты
+  }
+};
+```

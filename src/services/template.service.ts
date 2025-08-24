@@ -38,8 +38,6 @@ export type TemplateJobStatus = 'queued' | 'processing' | 'succeeded' | 'failed'
 export interface RunTemplateParams {
   files: File[];
   instruction?: string;
-  // Кол-во единиц валюты, которое следует списать за запрос
-  charge_units?: number;
 }
 
 export interface RunTemplateResponse {
@@ -93,13 +91,8 @@ const createMockPdf = (title: string) => new Blob([
 
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-// === Стоимость: 1 ед. на каждые 32 000 токенов (минимум 1) ===
-const TOKENS_PER_UNIT = 32000;
-
-export const calculateCostUnits = (tokens: number): number => {
-  if (!Number.isFinite(tokens) || tokens <= 0) return 1;
-  return Math.max(1, Math.ceil(tokens / TOKENS_PER_UNIT));
-};
+// === Стоимость: конфигурируемый порог токенов на 1 ед. (минимум 1) ===
+import { COST_CONFIG, calculateCostUnitsByTokens } from '@/config/cost.config';
 
 // Мок: «подсчёт токенов» по размерам файлов и длине инструкции
 // Это лишь эвристика для UI до появления бэкенда
@@ -130,8 +123,8 @@ const formatCostMessage = (tokens: number, units: number): string => {
 // Пречек: сначала считаем токены, если <= 32k — автозапуск, иначе возвращаем сообщение и стоимость
 export const precheckAndMaybeRunTemplate = async (code: string, params: RunTemplateParams): Promise<PrecheckAndMaybeRunResult> => {
   const { tokens } = await countTemplateTokens(params);
-  const costUnits = calculateCostUnits(tokens);
-  if (tokens <= TOKENS_PER_UNIT) {
+  const costUnits = calculateCostUnitsByTokens(tokens);
+  if (tokens <= COST_CONFIG.TOKENS_PER_UNIT) {
     const run = await runTemplate(code, params);
     return { started: true, job_id: run.job_id, tokens, costUnits };
   }
@@ -151,7 +144,6 @@ export const runTemplate = async (code: string, params: RunTemplateParams): Prom
   // const form = new FormData();
   // params.files.forEach((f) => form.append('files[]', f));
   // if (params.instruction) form.append('instruction', params.instruction);
-  // if (typeof params.charge_units === 'number') form.append('charge_units', String(params.charge_units));
   // const response = await fetch(`/api/tpl/${code}/run`, { method: 'POST', body: form, headers: { Authorization: `Bearer ${storage.getToken()}` } });
   // if (response.status !== 202) throw new Error('Не удалось запустить генерацию');
   // return response.json();

@@ -298,20 +298,16 @@ export const API_CONFIG = {
 - Эндпоинты: `GET /api/tpl/jobs/{job_id}/result/docx` и `/pdf` → бинарный ответ
 
 ### Поведение на фронтенде
-1. Вызываем `GET /api/tpl/count`.
-2. Если `tokens <= 32000`, автоматически запускаем генерацию через `POST /run` и переходим к опросу статуса.
-3. Если `tokens > 32000`, показываем пользователю промежуточный шаг с сообщением:
-
-   «В предоставленных документах найдено {tokens} токенов. Стоимость запроса составит {costUnits} единиц внутренней валюты.
-
-   Чтобы сэкономить, вы можете вырезать из документов нерелевантные данные (на ваш взгляд не обязательные для анализа). Тогда стоимость запроса снизится.»
+1. Вызываем `POST /api/tpl/count` (multipart: `files[]`, `instruction`).
+2. Если `tokens <= TOKENS_PER_UNIT` (см. `src/config/cost.config.ts`), автоматически запускаем `POST /run` и переходим к опросу статуса.
+3. Если `tokens > TOKENS_PER_UNIT`, показываем промежуточный шаг с сообщением и “Подробнее” по тарификации.
+4. По кнопке запуска отправляем `POST /run` без передачи стоимости; списание валюты считает backend.
 
 ### Реализация на фронтенде (моки)
 - Файл: `src/services/template.service.ts`
-  - `countTemplateTokens(params)` — возвращает `{ tokens }` (мок)
-  - `calculateCostUnits(tokens)` — считает стоимость по формуле выше
-  - `precheckAndMaybeRunTemplate(code, params)` — выполняет подсчёт; если `<= 32k`, вызывает `runTemplate`, иначе возвращает сообщение, токены и стоимость без старта
-  - Остальные функции (`runTemplate`, `getTemplateJobStatus`, `downloadTemplateResult`) остаются прежними и пока замоканы
+  - `countTemplateTokens(params)` — возвращает `{ tokens }` (мок POST /tpl/count)
+  - `precheckAndMaybeRunTemplate(code, params)` — подсчёт; при `tokens <= TOKENS_PER_UNIT` вызывает `runTemplate`, иначе возвращает сообщение, токены и рассчитанную на фронте стоимость для отображения пользователю
+  - Списание валюты выполняется на backend; фронтенд стоимость не передаёт
 
 Эндпоинты в конфиге: `src/config/api.config.ts`
 ```typescript

@@ -169,7 +169,7 @@ const DocumentEditor = () => {
     try {
       setIsGenerating(true);
       setJobId(null);
-      const res = await runTemplate(documentId, { files: files.map(f => f.file), instruction: instructions || undefined, charge_units: precheck.costUnits });
+      const res = await runTemplate(documentId, { files: files.map(f => f.file), instruction: instructions || undefined });
       setJobId(res.job_id);
       setPrecheck(null);
     } catch (e) {

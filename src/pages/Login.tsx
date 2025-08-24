@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { useToast } from '../components/Toast';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
@@ -9,6 +10,7 @@ const Login: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const { login, loading, error, clearError, isAuthenticated } = useAuth();
+  const { showToast } = useToast();
   const navigate = useNavigate();
 
   // Перенаправляем на главную страницу, если пользователь уже авторизован
@@ -17,6 +19,19 @@ const Login: React.FC = () => {
       navigate('/', { replace: true });
     }
   }, [isAuthenticated, navigate]);
+
+  // Показываем toast при появлении ошибки
+  useEffect(() => {
+    if (error) {
+      showToast({
+        title: 'Ошибка входа',
+        description: error,
+        variant: 'error',
+        durationMs: 5000
+      });
+      clearError();
+    }
+  }, [error, showToast, clearError]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,7 +42,7 @@ const Login: React.FC = () => {
       // После успешного входа пользователь будет перенаправлен на главную страницу
       navigate('/', { replace: true });
     } catch (err) {
-      // Ошибка уже обработана в хуке
+      // Ошибка уже обработана в хуке и показана через toast
     }
   };
 
@@ -45,12 +60,6 @@ const Login: React.FC = () => {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
-              {error && (
-                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md text-sm">
-                  {error}
-                </div>
-              )}
-              
               <div>
                 <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
                   Email

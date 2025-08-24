@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { signIn, signUp, signOut, getAccessToken, isAuthenticated } from '../services/auth.service';
 import type { SignInRequest, SignUpRequest, SignInResponse } from '../services/auth.service';
 import { storage } from '../utils/storage';
+import { isTokenValid } from '../utils/auth';
 
 export const useAuth = () => {
   const [user, setUser] = useState<SignInResponse['user'] | null>(null);
@@ -21,7 +22,15 @@ export const useAuth = () => {
       
       return result;
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Ошибка входа в систему';
+      // Извлекаем понятное сообщение об ошибке
+      let errorMessage = 'Ошибка входа в систему';
+      
+      if (err instanceof Error) {
+        errorMessage = err.message;
+      } else if (typeof err === 'string') {
+        errorMessage = err;
+      }
+      
       setError(errorMessage);
       throw new Error(errorMessage);
     } finally {
@@ -40,7 +49,15 @@ export const useAuth = () => {
       
       return result;
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Ошибка регистрации';
+      // Извлекаем понятное сообщение об ошибке
+      let errorMessage = 'Ошибка регистрации';
+      
+      if (err instanceof Error) {
+        errorMessage = err.message;
+      } else if (typeof err === 'string') {
+        errorMessage = err;
+      }
+      
       setError(errorMessage);
       throw new Error(errorMessage);
     } finally {
@@ -57,8 +74,7 @@ export const useAuth = () => {
       setUser(null);
       storage.clearAll();
     } catch (err) {
-      console.error('Ошибка при выходе:', err);
-      // Даже если запрос не удался, очищаем локальные данные
+      // Убираем console.error - просто очищаем локальные данные
       setUser(null);
       storage.clearAll();
     } finally {
@@ -70,6 +86,13 @@ export const useAuth = () => {
   useEffect(() => {
     const checkAuth = () => {
       try {
+        // Проверяем, есть ли действительный токен
+        if (!isTokenValid()) {
+          setUser(null);
+          setLoading(false);
+          return;
+        }
+
         const token = getAccessToken();
         const savedUser = storage.getUser();
         
@@ -79,7 +102,7 @@ export const useAuth = () => {
           setUser(null);
         }
       } catch (err) {
-        console.error('Ошибка при проверке авторизации:', err);
+        // Убираем console.error - просто сбрасываем пользователя
         setUser(null);
       } finally {
         setLoading(false);
@@ -88,6 +111,39 @@ export const useAuth = () => {
 
     checkAuth();
   }, []);
+
+  // Периодическая проверка токена (каждые 5 минут)
+  useEffect(() => {
+    if (!user) return; // Проверяем только если пользователь авторизован
+
+    const interval = setInterval(() => {
+      if (!isTokenValid()) {
+        // Токен истек - очищаем состояние
+        setUser(null);
+        storage.clearAll();
+        // Перенаправление произойдет автоматически через createApiRequest
+      }
+    }, 5 * 60 * 1000); // 5 минут
+
+    return () => clearInterval(interval);
+  }, [user]);
+
+  // Проверка токена при фокусе окна (когда пользователь возвращается на вкладку)
+  useEffect(() => {
+    if (!user) return; // Проверяем только если пользователь авторизован
+
+    const handleFocus = () => {
+      if (!isTokenValid()) {
+        // Токен истек - очищаем состояние
+        setUser(null);
+        storage.clearAll();
+        // Перенаправление произойдет автоматически через createApiRequest
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [user]);
 
   return {
     user,

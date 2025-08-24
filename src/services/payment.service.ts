@@ -3,6 +3,7 @@ import type { ApiResponse } from '../types/api.types';
 import { mockUserSubscription, mockUserBalance } from '../mock/user.mock';
 import { storage } from '../utils/storage';
 import { API_CONFIG, createApiUrl, createAuthHeaders } from '../config/api.config';
+import { createApiRequest } from '../utils/auth';
 
 /**
  * Ручка подгрузки текущего тарифа пользователя
@@ -20,22 +21,25 @@ export const getCurrentSubscription = async (): Promise<UserSubscription> => {
       throw new Error('Токен не найден');
     }
 
-    const response = await fetch(createApiUrl(API_CONFIG.ENDPOINTS.SUBSCRIPTION), {
-      method: 'GET',
-      headers: createAuthHeaders(token),
-    });
-
-    if (!response.ok) {
-      if (response.status === 401) {
-        throw new Error('Неавторизованный доступ');
+    const data = await createApiRequest<UserSubscription>(
+      createApiUrl(API_CONFIG.ENDPOINTS.SUBSCRIPTION),
+      {
+        method: 'GET',
+        headers: createAuthHeaders(token),
       }
-      throw new Error(`Ошибка сервера: ${response.status}`);
-    }
+    );
 
-    const data: UserSubscription = await response.json();
     return data;
   } catch (error) {
-    console.error('Ошибка получения данных подписки:', error);
+    // Извлекаем понятное сообщение об ошибке
+    let errorMessage = 'Ошибка получения данных подписки';
+    
+    if (error instanceof Error) {
+      errorMessage = error.message;
+    } else if (typeof error === 'string') {
+      errorMessage = error;
+    }
+    
     // Возвращаем мок-данные в случае ошибки
     return mockUserSubscription;
   }

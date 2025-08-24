@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { useToast } from '../components/Toast';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
@@ -12,6 +13,7 @@ const Register: React.FC = () => {
   const [fullName, setFullName] = useState('');
   const [passwordError, setPasswordError] = useState('');
   const { register, loading, error, clearError, isAuthenticated } = useAuth();
+  const { showToast } = useToast();
   const navigate = useNavigate();
 
   // Перенаправляем на главную страницу, если пользователь уже авторизован
@@ -20,6 +22,19 @@ const Register: React.FC = () => {
       navigate('/', { replace: true });
     }
   }, [isAuthenticated, navigate]);
+
+  // Показываем toast при появлении ошибки
+  useEffect(() => {
+    if (error) {
+      showToast({
+        title: 'Ошибка регистрации',
+        description: error,
+        variant: 'error',
+        durationMs: 5000
+      });
+      clearError();
+    }
+  }, [error, showToast, clearError]);
 
   // Валидация паролей
   useEffect(() => {
@@ -36,11 +51,23 @@ const Register: React.FC = () => {
     
     if (password !== confirmPassword) {
       setPasswordError('Пароли не совпадают');
+      showToast({
+        title: 'Ошибка валидации',
+        description: 'Пароли не совпадают',
+        variant: 'error',
+        durationMs: 3000
+      });
       return;
     }
 
     if (password.length < 6) {
       setPasswordError('Пароль должен содержать минимум 6 символов');
+      showToast({
+        title: 'Ошибка валидации',
+        description: 'Пароль должен содержать минимум 6 символов',
+        variant: 'error',
+        durationMs: 3000
+      });
       return;
     }
     
@@ -50,10 +77,16 @@ const Register: React.FC = () => {
         password, 
         full_name: fullName.trim() || undefined 
       });
-      // После успешной регистрации перенаправляем на страницу входа
+      // После успешной регистрации показываем уведомление и перенаправляем на страницу входа
+      showToast({
+        title: 'Регистрация успешна',
+        description: 'Теперь вы можете войти в систему',
+        variant: 'success',
+        durationMs: 3000
+      });
       navigate('/login', { replace: true });
     } catch (err) {
-      // Ошибка уже обработана в хуке
+      // Ошибка уже обработана в хуке и показана через toast
     }
   };
 
@@ -71,12 +104,6 @@ const Register: React.FC = () => {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
-              {error && (
-                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md text-sm">
-                  {error}
-                </div>
-              )}
-              
               <div>
                 <label htmlFor="fullName" className="block text-sm font-medium text-gray-700 mb-2">
                   Полное имя

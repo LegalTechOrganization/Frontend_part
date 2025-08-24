@@ -1,6 +1,7 @@
 import type { ApiResponse } from '../types/api.types';
 import { API_CONFIG, createAuthHeaders } from '../config/api.config';
 import { storage } from '../utils/storage';
+import { createApiRequest, resetRedirectFlag } from '../utils/auth';
 
 export interface SignInRequest {
   email: string;
@@ -45,7 +46,27 @@ export const signIn = async (data: SignInRequest): Promise<SignInResponse> => {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.detail || `Ошибка входа: ${response.status}`);
+      
+      // Извлекаем понятное сообщение об ошибке
+      let errorMessage = 'Неверный email или пароль';
+      
+      if (errorData.detail) {
+        if (errorData.detail === 'Invalid credentials') {
+          errorMessage = 'Неверный email или пароль';
+        } else if (errorData.detail.includes('Invalid credentials')) {
+          errorMessage = 'Неверный email или пароль';
+        } else {
+          errorMessage = errorData.detail;
+        }
+      } else if (response.status === 401) {
+        errorMessage = 'Неверный email или пароль';
+      } else if (response.status === 422) {
+        errorMessage = 'Неверный формат данных';
+      } else if (response.status >= 500) {
+        errorMessage = 'Ошибка сервера. Попробуйте позже';
+      }
+      
+      throw new Error(errorMessage);
     }
 
     const result = await response.json();
@@ -61,10 +82,17 @@ export const signIn = async (data: SignInRequest): Promise<SignInResponse> => {
       storage.setUser(result.user);
     }
 
+    // Сбрасываем флаг перенаправления при успешном входе
+    resetRedirectFlag();
+
     return result;
   } catch (error) {
-    console.error('Ошибка при входе в систему:', error);
-    throw error;
+    // Если это уже наша обработанная ошибка, пробрасываем её
+    if (error instanceof Error) {
+      throw error;
+    }
+    // Если это другая ошибка (например, сеть), показываем общее сообщение
+    throw new Error('Ошибка подключения. Проверьте интернет и попробуйте снова');
   }
 };
 
@@ -87,7 +115,29 @@ export const signUp = async (data: SignUpRequest): Promise<SignUpResponse> => {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.detail || `Ошибка регистрации: ${response.status}`);
+      
+      // Извлекаем понятное сообщение об ошибке
+      let errorMessage = 'Ошибка регистрации';
+      
+      if (errorData.detail) {
+        if (errorData.detail.includes('already exists') || errorData.detail.includes('already registered')) {
+          errorMessage = 'Пользователь с таким email уже существует';
+        } else if (errorData.detail.includes('Invalid email')) {
+          errorMessage = 'Неверный формат email';
+        } else if (errorData.detail.includes('password')) {
+          errorMessage = 'Пароль слишком простой';
+        } else {
+          errorMessage = errorData.detail;
+        }
+      } else if (response.status === 409) {
+        errorMessage = 'Пользователь с таким email уже существует';
+      } else if (response.status === 422) {
+        errorMessage = 'Неверный формат данных';
+      } else if (response.status >= 500) {
+        errorMessage = 'Ошибка сервера. Попробуйте позже';
+      }
+      
+      throw new Error(errorMessage);
     }
 
     const result = await response.json();
@@ -95,8 +145,12 @@ export const signUp = async (data: SignUpRequest): Promise<SignUpResponse> => {
     // На регистрации не сохраняем токены — редиректим на страницу входа
     return result;
   } catch (error) {
-    console.error('Ошибка при регистрации:', error);
-    throw error;
+    // Если это уже наша обработанная ошибка, пробрасываем её
+    if (error instanceof Error) {
+      throw error;
+    }
+    // Если это другая ошибка (например, сеть), показываем общее сообщение
+    throw new Error('Ошибка подключения. Проверьте интернет и попробуйте снова');
   }
 };
 
@@ -123,15 +177,14 @@ export const signOut = async (): Promise<void> => {
       body: JSON.stringify({ refresh_token: refreshToken }),
     });
     if (!resp.ok) {
-      const text = await resp.text().catch(() => '');
-      console.warn('Logout failed', resp.status, text);
+      // Убираем console.warn - просто продолжаем с локальным логаутом
+      await resp.text().catch(() => '');
     }
     
     // Очищаем локальное хранилище
     storage.clearAll();
   } catch (error) {
-    console.error('Ошибка при выходе из системы:', error);
-    // Даже если запрос не удался, очищаем локальные данные
+    // Убираем console.error - просто очищаем локальные данные
     storage.clearAll();
   }
 };

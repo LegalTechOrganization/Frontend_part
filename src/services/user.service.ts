@@ -2,43 +2,46 @@ import type { UserProfile, ChangePasswordRequest, UpdateUserProfileRequest } fro
 import type { ApiResponse } from '../types/api.types';
 import { mockUserProfile } from '../mock/user.mock';
 import { storage } from '../utils/storage';
-import { API_CONFIG, createAuthHeaders } from '../config/api.config';
+import { API_CONFIG, createApiUrl, createAuthHeaders } from '../config/api.config';
+import { createApiRequest } from '../utils/auth';
 
 /**
- * Ручка получения профиля пользователя из БД
+ * Ручка получения профиля пользователя
  * 
- * Пользователь: заходит в ЛК, система автоматически загружает его данные
- * Backend: GET /api/user/profile
+ * Пользователь: заходит в ЛК, система показывает его данные
+ * Backend: GET /v1/client/me
  * Headers: Authorization: Bearer {JWT_TOKEN}
- * Response: UserProfile (id, email, full_name, created_at, last_login_at, metadata)
+ * Response: UserProfile (user_id, email, full_name, metadata)
  */
 export const getUserProfile = async (): Promise<UserProfile> => {
-  const token = storage.getToken();
-  if (!token) {
-    throw new Error('Токен отсутствует. Авторизуйтесь заново.');
-  }
-
   try {
-    const response = await fetch(API_CONFIG.ENDPOINTS.USER_PROFILE, {
-      headers: createAuthHeaders(token)
-    });
-
-    if (!response.ok) {
-      if (response.status === 401) {
-        throw new Error('Необходима повторная авторизация');
-      }
-      throw new Error(`Ошибка получения профиля: ${response.status}`);
+    const token = storage.getToken();
+    if (!token) {
+      throw new Error('Токен не найден');
     }
 
-    const userData = await response.json();
+    const data = await createApiRequest<UserProfile>(
+      createApiUrl(API_CONFIG.ENDPOINTS.USER_PROFILE),
+      {
+        method: 'GET',
+        headers: createAuthHeaders(token),
+      }
+    );
+
     // Кешируем пользователя локально только для UX (не токены)
-    storage.setUser(userData);
-    return userData;
+    storage.setUser(data);
+    return data;
   } catch (error) {
-    console.error('Ошибка при получении профиля:', error);
+    // Извлекаем понятное сообщение об ошибке
+    let errorMessage = 'Ошибка получения данных подписки';
     
-    // Если API недоступен, возвращаем мок-данные для разработки
-    console.warn('Используются мок-данные для разработки');
+    if (error instanceof Error) {
+      errorMessage = error.message;
+    } else if (typeof error === 'string') {
+      errorMessage = error;
+    }
+    
+    // Возвращаем мок-данные для разработки
     return new Promise((resolve) => {
       setTimeout(() => resolve(mockUserProfile), 500);
     });
@@ -61,26 +64,30 @@ export const changePassword = async (data: ChangePasswordRequest): Promise<ApiRe
   }
 
   try {
-    const response = await fetch(API_CONFIG.ENDPOINTS.CHANGE_PASSWORD, {
-      method: 'POST',
-      headers: createAuthHeaders(token),
-      body: JSON.stringify({
-        old_password: data.current_password,
-        new_password: data.new_password
-      })
-    });
-
-    if (!response.ok) {
-      if (response.status === 401) {
-        throw new Error('Необходима повторная авторизация');
+    const response = await createApiRequest<ApiResponse<null>>(
+      createApiUrl(API_CONFIG.ENDPOINTS.CHANGE_PASSWORD),
+      {
+        method: 'POST',
+        headers: createAuthHeaders(token),
+        body: JSON.stringify({
+          old_password: data.current_password,
+          new_password: data.new_password
+        })
       }
-      throw new Error(`Ошибка смены пароля: ${response.status}`);
-    }
+    );
 
     return { success: true, data: null, message: 'Пароль успешно изменен' };
   } catch (error) {
-    console.error('Ошибка при смене пароля:', error);
-    throw error;
+    // Извлекаем понятное сообщение об ошибке
+    let errorMessage = 'Ошибка смены пароля';
+    
+    if (error instanceof Error) {
+      errorMessage = error.message;
+    } else if (typeof error === 'string') {
+      errorMessage = error;
+    }
+    
+    throw new Error(errorMessage);
   }
 };
 
@@ -100,23 +107,16 @@ export const updateUserProfile = async (data: UpdateUserProfileRequest): Promise
   }
 
   try {
-    const response = await fetch(API_CONFIG.ENDPOINTS.UPDATE_PROFILE, {
-      method: 'PATCH',
-      headers: createAuthHeaders(token),
-      body: JSON.stringify({
-        full_name: data.full_name
-      })
-    });
-
-    if (!response.ok) {
-      if (response.status === 401) {
-        throw new Error('Необходима повторная авторизация');
+    const updatedUserData = await createApiRequest<UserProfile>(
+      createApiUrl(API_CONFIG.ENDPOINTS.UPDATE_PROFILE),
+      {
+        method: 'PATCH',
+        headers: createAuthHeaders(token),
+        body: JSON.stringify({
+          full_name: data.full_name
+        })
       }
-      throw new Error(`Ошибка обновления профиля: ${response.status}`);
-    }
-
-    // Получаем обновлённые данные пользователя
-    const updatedUserData = await response.json();
+    );
     
     // Обновляем кеш пользователя
     storage.setUser(updatedUserData);
@@ -127,7 +127,15 @@ export const updateUserProfile = async (data: UpdateUserProfileRequest): Promise
       message: 'Профиль обновлён' 
     };
   } catch (error) {
-    console.error('Ошибка при обновлении профиля:', error);
-    throw error;
+    // Извлекаем понятное сообщение об ошибке
+    let errorMessage = 'Ошибка обновления профиля';
+    
+    if (error instanceof Error) {
+      errorMessage = error.message;
+    } else if (typeof error === 'string') {
+      errorMessage = error;
+    }
+    
+    throw new Error(errorMessage);
   }
 };

@@ -2,9 +2,11 @@ import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { Crown, Check, CreditCard, Loader2 } from 'lucide-react';
 import { useSubscription } from '../hooks/useSubscription';
+import { useToast } from './Toast';
 
 const PlanCard = () => {
     const { subscription, balance, nextBilling, loading, error, renewSubscription } = useSubscription();
+    const { showToast } = useToast();
     const navigate = useNavigate();
 
     const features = [
@@ -18,8 +20,19 @@ const PlanCard = () => {
     const handleRenewSubscription = async () => {
         try {
             await renewSubscription();
+            showToast({
+                title: 'Подписка продлена',
+                description: 'Ваша подписка успешно продлена',
+                variant: 'success',
+                durationMs: 3000
+            });
         } catch (error) {
-            console.error('Ошибка при продлении подписки:', error);
+            showToast({
+                title: 'Ошибка продления',
+                description: error instanceof Error ? error.message : 'Не удалось продлить подписку',
+                variant: 'error',
+                durationMs: 5000
+            });
         }
     };
 

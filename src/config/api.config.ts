@@ -31,6 +31,8 @@ export const API_CONFIG = {
     CREATE_TOPUP_LINK: '/api/payment/create-topup-link',
     
     // Шаблоны документов
+    // Предподсчёт токенов перед запуском генерации
+    TEMPLATE_COUNT: () => `/api/tpl/count`,
     TEMPLATE_RUN: (code: string) => `/api/tpl/${code}/run`,
     TEMPLATE_STATUS: (jobId: string) => `/api/tpl/jobs/${jobId}/status`,
     TEMPLATE_RESULT: (jobId: string, format: string) => `/api/tpl/jobs/${jobId}/result/${format}`,
@@ -44,7 +46,7 @@ export const createApiUrl = (endpoint: string): string => {
 
 // Функция для создания заголовков с авторизацией
 export const createAuthHeaders = (token?: string): Record<string, string> => {
-  const headers = { ...API_CONFIG.DEFAULT_HEADERS };
+  const headers: Record<string, string> = { ...API_CONFIG.DEFAULT_HEADERS };
   
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;

@@ -1,5 +1,4 @@
 import type { UserSubscription, UserBalance, PaymentLinkResponse } from '../types/user.types';
-import type { ApiResponse } from '../types/api.types';
 import { mockUserSubscription, mockUserBalance } from '../mock/user.mock';
 import { storage } from '../utils/storage';
 import { API_CONFIG, createApiUrl, createAuthHeaders } from '../config/api.config';

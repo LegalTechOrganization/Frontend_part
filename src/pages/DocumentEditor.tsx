@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Upload, X, FileText, Image, Trash2, Sparkles, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { runTemplate } from '@/services/template.service';
+import { runTemplate, precheckAndMaybeRunTemplate } from '@/services/template.service';
 import { useTemplateJob } from '@/hooks/useTemplateJob';
 import { useToast } from '@/components/Toast';
 
@@ -64,6 +64,7 @@ const DocumentEditor = () => {
   const [isDragOver, setIsDragOver] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [jobId, setJobId] = useState<string | null>(null);
+  const [precheck, setPrecheck] = useState<{ tokens: number; costUnits: number; message: string } | null>(null);
   const { status, progress, error, downloadDocx, downloadPdf } = useTemplateJob(jobId);
   const { showToast } = useToast();
 
@@ -147,13 +148,35 @@ const DocumentEditor = () => {
     try {
       setIsGenerating(true);
       setJobId(null);
-      const res = await runTemplate(documentId, { files: files.map(f => f.file), instruction: instructions || undefined });
-      setJobId(res.job_id);
+      // Пречек по токенам
+      const resPre = await precheckAndMaybeRunTemplate(documentId, { files: files.map(f => f.file), instruction: instructions || undefined });
+      if (resPre.started) {
+        setPrecheck(null);
+        setJobId(resPre.job_id);
+      } else {
+        setPrecheck({ tokens: resPre.tokens, costUnits: resPre.costUnits, message: resPre.message });
+        setIsGenerating(false);
+        return;
+      }
     } catch (e) {
       showToast({ variant: 'error', title: 'Не удалось запустить генерацию', description: e instanceof Error ? e.message : 'Попробуйте ещё раз' });
       setIsGenerating(false);
     }
   }, [documentId, files, instructions, showToast]);
+
+  const confirmGenerateWithCharge = useCallback(async () => {
+    if (!documentId || !precheck) return;
+    try {
+      setIsGenerating(true);
+      setJobId(null);
+      const res = await runTemplate(documentId, { files: files.map(f => f.file), instruction: instructions || undefined, charge_units: precheck.costUnits });
+      setJobId(res.job_id);
+      setPrecheck(null);
+    } catch (e) {
+      showToast({ variant: 'error', title: 'Не удалось запустить генерацию', description: e instanceof Error ? e.message : 'Попробуйте ещё раз' });
+      setIsGenerating(false);
+    }
+  }, [documentId, files, instructions, precheck, showToast]);
 
   // Авто-снятие флага isGenerating, когда задача завершилась (успех/ошибка)
   useEffect(() => {
@@ -283,6 +306,45 @@ const DocumentEditor = () => {
 
         {/* Панель инструкций и действий */}
         <div className="space-y-6">
+          {precheck && (
+            <div className="bg-white rounded-3xl p-6 shadow-lg border border-amber-300">
+              <div className="flex items-start gap-3">
+                <div className="shrink-0 mt-1"><Sparkles className="text-amber-500" size={20} /></div>
+                <div className="space-y-4 w-full">
+                  <div className="text-ink break-words">{precheck.message}</div>
+                  <div className="text-sm text-ink/70">
+                    <span className="underline decoration-dotted cursor-help relative group">
+                      Подробнее
+                      <span className="pointer-events-none absolute left-0 top-6 z-20 hidden group-hover:block bg-ink text-white text-sm rounded-xl shadow-xl p-4 w-80">
+                        <div className="space-y-2">
+                          <div>
+                            Чтобы сэкономить, вы можете вырезать из документов нерелевантные данные (на ваш взгляд не обязательные для анализа). Тогда стоимость запроса снизится.
+                          </div>
+                          <div className="opacity-80">
+                            Логика расчёта стоимости:
+                            <ul className="list-disc pl-5 mt-1 space-y-1">
+                              <li>до 32 000 токенов — 1 единица валюты;</li>
+                              <li>от 32 001 до 64 000 токенов — 2 единицы валюты;</li>
+                              <li>от 64 001 до 96 000 токенов — 3 единицы валюты;</li>
+                              <li>и далее: +1 единица за каждые дополнительные 32 000 токенов.</li>
+                            </ul>
+                          </div>
+                        </div>
+                      </span>
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-stretch">
+                    <Button onClick={confirmGenerateWithCharge} className="bg-ink text-white hover:bg-ink/90 w-full h-full whitespace-normal break-words text-center leading-snug">
+                      Запустить за {precheck.costUnits} {precheck.costUnits === 1 ? 'единицу' : 'единицы'}
+                    </Button>
+                    <Button variant="outline" onClick={() => setPrecheck(null)} className="border-ink/20 w-full h-full">
+                      Отмена
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
           {/* Текстовые инструкции */}
           <div className="bg-white rounded-3xl p-6 shadow-lg border border-ink/5">
             <h4 className="text-lg font-playfair font-semibold text-ink mb-4">

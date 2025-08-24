@@ -4,6 +4,13 @@
 // реализует backend. Сейчас всё замокано для разработки UI.
 //
 // Архитектура API (асинхронная):
+// 0) Предподсчёт токенов
+//    Метод: POST /api/tpl/count (multipart/form-data)
+//    Form fields:
+//      - files[]: File (0..N)
+//      - instruction?: string
+//    Response: 200 { tokens: number }
+//
 // 1) Ручка запуска генерации
 //    Метод: POST /api/tpl/{code}/run
 //    Headers: Authorization: Bearer {JWT_TOKEN}
@@ -31,6 +38,8 @@ export type TemplateJobStatus = 'queued' | 'processing' | 'succeeded' | 'failed'
 export interface RunTemplateParams {
   files: File[];
   instruction?: string;
+  // Кол-во единиц валюты, которое следует списать за запрос
+  charge_units?: number;
 }
 
 export interface RunTemplateResponse {
@@ -43,6 +52,26 @@ export interface TemplateStatusResponse {
   error_code?: string;
   error_message?: string;
 }
+
+export interface CountTokensResponse {
+  tokens: number;
+}
+
+export interface PrecheckResultStarted {
+  started: true;
+  job_id: string;
+  tokens: number;
+  costUnits: number;
+}
+
+export interface PrecheckResultNotStarted {
+  started: false;
+  tokens: number;
+  costUnits: number;
+  message: string;
+}
+
+export type PrecheckAndMaybeRunResult = PrecheckResultStarted | PrecheckResultNotStarted;
 
 // ===== Моки (in-memory) =====
 // Храним состояние задач и подготовленные Blob-файлы результата
@@ -64,6 +93,52 @@ const createMockPdf = (title: string) => new Blob([
 
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+// === Стоимость: 1 ед. на каждые 32 000 токенов (минимум 1) ===
+const TOKENS_PER_UNIT = 32000;
+
+export const calculateCostUnits = (tokens: number): number => {
+  if (!Number.isFinite(tokens) || tokens <= 0) return 1;
+  return Math.max(1, Math.ceil(tokens / TOKENS_PER_UNIT));
+};
+
+// Мок: «подсчёт токенов» по размерам файлов и длине инструкции
+// Это лишь эвристика для UI до появления бэкенда
+export const countTemplateTokens = async (params: RunTemplateParams): Promise<CountTokensResponse> => {
+  // TODO: Реальный запрос (пример):
+  // const form = new FormData();
+  // (params.files ?? []).forEach((f) => form.append('files[]', f));
+  // if (params.instruction) form.append('instruction', params.instruction);
+  // const url = API_CONFIG.ENDPOINTS.TEMPLATE_COUNT();
+  // const response = await fetch(url, { method: 'POST', body: form, headers: { Authorization: `Bearer ${storage.getToken()}` } });
+  // if (!response.ok) throw new Error('Не удалось посчитать токены');
+  // return response.json();
+
+  // Мок: имитируем сетевой POST и серверный OCR/подсчёт
+  await delay(150);
+  const approxTokensFromFiles = (params.files ?? []).reduce((sum, f) => sum + Math.ceil((f.size || 0) / 4), 0);
+  const approxTokensFromInstruction = params.instruction ? Math.ceil(params.instruction.length / 4) : 0;
+  const base = approxTokensFromFiles + approxTokensFromInstruction;
+  const jitter = Math.floor(Math.random() * 1500); // больше разброса
+  const tokens = Math.max(0, base + jitter);
+  return { tokens };
+};
+
+const formatCostMessage = (tokens: number, units: number): string => {
+  return `В предоставленных документах найдено ${tokens.toLocaleString('ru-RU')} токенов.\nСтоимость запроса составит ${units} ${units === 1 ? 'единицу' : 'единицы'} внутренней валюты.`;
+};
+
+// Пречек: сначала считаем токены, если <= 32k — автозапуск, иначе возвращаем сообщение и стоимость
+export const precheckAndMaybeRunTemplate = async (code: string, params: RunTemplateParams): Promise<PrecheckAndMaybeRunResult> => {
+  const { tokens } = await countTemplateTokens(params);
+  const costUnits = calculateCostUnits(tokens);
+  if (tokens <= TOKENS_PER_UNIT) {
+    const run = await runTemplate(code, params);
+    return { started: true, job_id: run.job_id, tokens, costUnits };
+  }
+  const message = formatCostMessage(tokens, costUnits);
+  return { started: false, tokens, costUnits, message };
+};
+
 /**
  * Ручка запуска генерации документа (Ручка)
  * 
@@ -76,6 +151,7 @@ export const runTemplate = async (code: string, params: RunTemplateParams): Prom
   // const form = new FormData();
   // params.files.forEach((f) => form.append('files[]', f));
   // if (params.instruction) form.append('instruction', params.instruction);
+  // if (typeof params.charge_units === 'number') form.append('charge_units', String(params.charge_units));
   // const response = await fetch(`/api/tpl/${code}/run`, { method: 'POST', body: form, headers: { Authorization: `Bearer ${storage.getToken()}` } });
   // if (response.status !== 202) throw new Error('Не удалось запустить генерацию');
   // return response.json();

@@ -262,3 +262,63 @@ export const API_CONFIG = {
   }
 };
 ```
+
+---
+
+## Генерация документов (Template Service)
+
+Новый порядок работы: перед запуском генерации необходимо предварительно получить количество токенов во входных документах.
+
+### 0. Подсчёт токенов в документах
+- Эндпоинт: `GET /api/tpl/count`
+- Заголовки: `Authorization: Bearer {JWT_TOKEN}`
+- Ответ:
+```typescript
+{ tokens: number }
+```
+
+### Логика стоимости
+- До 32 000 токенов — 1 единица валюты
+- 32 001 — 64 000 — 2 единицы
+- 64 001 — 96 000 — 3 единицы
+- и далее: +1 единица на каждые дополнительные 32 000 токенов
+
+Формула: `costUnits = max(1, ceil(tokens / 32000))`
+
+### 1. Запуск генерации (без изменений в контракте)
+- Эндпоинт: `POST /api/tpl/{code}/run` (multipart/form-data)
+- Формы: `files[]: File (0..N)`, `instruction?: string`
+- Ответ: `202 { job_id: string }`
+
+### 2. Получение статуса задачи
+- Эндпоинт: `GET /api/tpl/jobs/{job_id}/status`
+- Ответ: `{ status: 'queued'|'processing'|'succeeded'|'failed', progress?: number }`
+
+### 3. Скачивание результата
+- Эндпоинты: `GET /api/tpl/jobs/{job_id}/result/docx` и `/pdf` → бинарный ответ
+
+### Поведение на фронтенде
+1. Вызываем `GET /api/tpl/count`.
+2. Если `tokens <= 32000`, автоматически запускаем генерацию через `POST /run` и переходим к опросу статуса.
+3. Если `tokens > 32000`, показываем пользователю промежуточный шаг с сообщением:
+
+   «В предоставленных документах найдено {tokens} токенов. Стоимость запроса составит {costUnits} единиц внутренней валюты.
+
+   Чтобы сэкономить, вы можете вырезать из документов нерелевантные данные (на ваш взгляд не обязательные для анализа). Тогда стоимость запроса снизится.»
+
+### Реализация на фронтенде (моки)
+- Файл: `src/services/template.service.ts`
+  - `countTemplateTokens(params)` — возвращает `{ tokens }` (мок)
+  - `calculateCostUnits(tokens)` — считает стоимость по формуле выше
+  - `precheckAndMaybeRunTemplate(code, params)` — выполняет подсчёт; если `<= 32k`, вызывает `runTemplate`, иначе возвращает сообщение, токены и стоимость без старта
+  - Остальные функции (`runTemplate`, `getTemplateJobStatus`, `downloadTemplateResult`) остаются прежними и пока замоканы
+
+Эндпоинты в конфиге: `src/config/api.config.ts`
+```typescript
+ENDPOINTS: {
+  TEMPLATE_COUNT: (code: string) => `/api/tpl/${code}/count`,
+  TEMPLATE_RUN: (code: string) => `/api/tpl/${code}/run`,
+  TEMPLATE_STATUS: (jobId: string) => `/api/tpl/jobs/${jobId}/status`,
+  TEMPLATE_RESULT: (jobId: string, format: string) => `/api/tpl/jobs/${jobId}/result/${format}`,
+}
+```

@@ -2,15 +2,11 @@ import { useState, useEffect } from 'react';
 import type { UserSubscription, UserBalance } from '../types/user.types';
 import { 
   getCurrentSubscription, 
-  createSubscriptionPaymentLink, 
-  getNextBillingInfo,
-  getUserBalance 
+  createSubscriptionPaymentLink
 } from '../services/payment.service';
 
 export const useSubscription = () => {
   const [subscription, setSubscription] = useState<UserSubscription | null>(null);
-  const [balance, setBalance] = useState<UserBalance | null>(null);
-  const [nextBilling, setNextBilling] = useState<{ next_billing_date: string; amount: number; currency: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -19,16 +15,10 @@ export const useSubscription = () => {
       setLoading(true);
       setError(null);
       
-      // Загружаем все данные параллельно
-      const [subscriptionData, balanceData, billingData] = await Promise.all([
-        getCurrentSubscription(),
-        getUserBalance(),
-        getNextBillingInfo()
-      ]);
+      // Загружаем данные подписки (теперь включает remaining_units и next_debit)
+      const subscriptionData = await getCurrentSubscription();
       
       setSubscription(subscriptionData);
-      setBalance(balanceData);
-      setNextBilling(billingData);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Ошибка загрузки данных подписки');
     } finally {
@@ -58,8 +48,17 @@ export const useSubscription = () => {
 
   return {
     subscription,
-    balance,
-    nextBilling,
+    // Для обратной совместимости оставляем balance и nextBilling
+    balance: subscription ? {
+      user_id: subscription.user_id,
+      balance_units: subscription.remaining_units,
+      updated_at: subscription.created_at
+    } : null,
+    nextBilling: subscription ? {
+      next_billing_date: subscription.next_debit,
+      amount: subscription.plan?.price_rub || 0,
+      currency: 'RUB'
+    } : null,
     loading,
     error,
     refetch: fetchSubscriptionData,

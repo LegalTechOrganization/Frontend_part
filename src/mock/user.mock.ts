@@ -18,25 +18,33 @@ export const mockUserProfile: UserProfile = {
 };
 
 export const mockTariffPlan: TariffPlan = {
-  plan_code: 'professional',
-  name: 'Профессиональный',
-  monthly_units: 1000,
-  price_rub: 5990,
-  period_days: 30,
+  plan_code: 'pro1500',
+  name: 'Pro Plan',
+  monthly_units: 1500.0,
+  price_rub: 1500,
   is_active: true,
   created_at: '2024-01-01T00:00:00Z'
 };
 
 export const mockUserSubscription: UserSubscription = {
-  id: 'sub-789-123-456',
-  user_id: 'user-123-456-789',
-  plan_code: 'professional',
-  started_at: '2025-01-01T00:00:00Z',
-  expires_at: '2025-02-01T00:00:00Z',
+  id: '550e8400-e29b-41d4-a716-446655440000',
+  user_id: 'user123',
+  plan_code: 'pro1500',
+  started_at: '2024-01-15T10:30:00Z',
+  expires_at: '2024-02-15T10:30:00Z',
   auto_renew: true,
   status: 'active',
-  last_payment_order: 'order-456-789-123',
-  created_at: '2025-01-01T00:00:00Z',
+  created_at: '2024-01-15T10:30:00Z',
+  remaining_units: 1250.5,
+  next_debit: '2024-02-15T10:30:00Z',
+  tariff_properties: [
+    'unlimited_api_calls',
+    'unlimited_storage',
+    'priority_support',
+    'custom_integration',
+    'advanced_analytics',
+    'dedicated_server'
+  ],
   plan: mockTariffPlan
 };
 

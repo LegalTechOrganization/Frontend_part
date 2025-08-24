@@ -21,7 +21,6 @@ export interface TariffPlan {
   name: string;
   monthly_units: number;
   price_rub: number;
-  period_days: number | null;
   is_active: boolean;
   created_at: string;
 }
@@ -34,8 +33,10 @@ export interface UserSubscription {
   expires_at: string;
   auto_renew: boolean;
   status: 'active' | 'expired' | 'cancelled';
-  last_payment_order: string | null;
   created_at: string;
+  remaining_units: number;
+  next_debit: string;
+  tariff_properties: string[];
   plan?: TariffPlan; // Joined data
 }
 

@@ -9,13 +9,24 @@ const PlanCard = () => {
     const { showToast } = useToast();
     const navigate = useNavigate();
 
-    const features = [
-        '1000 юнитов на чаты с AI в месяц',
-        'Анализ документов до 1 ГБ',
-        'Доступ к библиотеке промптов',
-        'Приоритетная поддержка',
-        'API интеграции'
-    ];
+    // Функция для перевода свойств тарифа в понятные названия
+    const getFeatureName = (property: string): string => {
+        const featureNames: Record<string, string> = {
+            'unlimited_api_calls': 'Безлимитные API вызовы',
+            'unlimited_storage': 'Безлимитное хранилище',
+            'priority_support': 'Приоритетная поддержка',
+            'custom_integration': 'Кастомная интеграция',
+            'advanced_analytics': 'Расширенная аналитика',
+            'dedicated_server': 'Выделенный сервер',
+            'basic_support': 'Базовая поддержка',
+            'standard_storage': 'Стандартное хранилище',
+            'api_access': 'Доступ к API',
+            'document_analysis': 'Анализ документов',
+            'prompt_library': 'Библиотека промптов'
+        };
+        
+        return featureNames[property] || property;
+    };
 
     const handleRenewSubscription = async () => {
         try {
@@ -36,12 +47,47 @@ const PlanCard = () => {
         }
     };
 
-    const formatDate = (dateString: string) => {
-        return new Date(dateString).toLocaleDateString('ru-RU', {
-            day: 'numeric',
-            month: 'long',
-            year: 'numeric'
-        });
+    const formatDate = (dateString: string | null | undefined) => {
+        if (!dateString) {
+            return 'Не указано';
+        }
+        
+        try {
+            // Пробуем разные форматы даты
+            let date: Date;
+            
+            // Если это строка с двойным Z (например: 2026-08-24T18:19:55.565744+00:00Z)
+            if (dateString.includes('+00:00Z')) {
+                // Убираем +00:00Z и добавляем обычный Z
+                const cleanDateString = dateString.replace('+00:00Z', 'Z');
+                date = new Date(cleanDateString);
+            }
+            // Если это ISO строка с Z в конце
+            else if (dateString.includes('T') && dateString.includes('Z')) {
+                date = new Date(dateString);
+            }
+            // Если это ISO строка без Z
+            else if (dateString.includes('T')) {
+                date = new Date(dateString + 'Z');
+            }
+            // Если это просто строка с датой
+            else {
+                date = new Date(dateString);
+            }
+            
+            // Проверяем, что дата валидна
+            if (isNaN(date.getTime())) {
+                return 'Неверный формат даты';
+            }
+            
+            return date.toLocaleDateString('ru-RU', {
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric'
+            });
+        } catch (error) {
+            return 'Ошибка форматирования даты';
+        }
     };
 
     if (loading) {
@@ -101,7 +147,7 @@ const PlanCard = () => {
                         <div>
                             <p className="text-sm text-ink/60 mb-1">Остаток юнитов</p>
                             <p className="text-2xl font-semibold text-ink">
-                                {balance?.balance_units?.toLocaleString('ru-RU') || '0'}
+                                {subscription.remaining_units?.toLocaleString('ru-RU') || '0'}
                             </p>
                         </div>
                         <div className="text-right">
@@ -124,12 +170,12 @@ const PlanCard = () => {
                                         fill="none"
                                         stroke="#C7A358"
                                         strokeWidth="2"
-                                        strokeDasharray={`${((balance?.balance_units || 0) / (subscription.plan?.monthly_units || 1)) * 100}, 100`}
+                                        strokeDasharray={`${((subscription.remaining_units || 0) / (subscription.plan?.monthly_units || 1)) * 100}, 100`}
                                     />
                                 </svg>
                                 <div className="absolute inset-0 flex items-center justify-center">
                                     <span className="text-xs font-medium text-ink">
-                                        {Math.round(((balance?.balance_units || 0) / (subscription.plan?.monthly_units || 1)) * 100)}%
+                                        {Math.round(((subscription.remaining_units || 0) / (subscription.plan?.monthly_units || 1)) * 100)}%
                                     </span>
                                 </div>
                             </div>
@@ -137,10 +183,11 @@ const PlanCard = () => {
                     </div>
                 </div>
 
+                {/* Свойства тарифа */}
                 <div className="space-y-3 mb-8">
-                    {features.map((feature, index) => (
+                    {subscription.tariff_properties?.map((property, index) => (
                         <motion.div
-                            key={feature}
+                            key={property}
                             initial={{ opacity: 0, x: -20 }}
                             animate={{ opacity: 1, x: 0 }}
                             transition={{ duration: 0.3, delay: index * 0.1 }}
@@ -149,7 +196,7 @@ const PlanCard = () => {
                             <div className="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">
                                 <Check size={12} className="text-white" />
                             </div>
-                            <span className="text-ink/80">{feature}</span>
+                            <span className="text-ink/80">{getFeatureName(property)}</span>
                         </motion.div>
                     ))}
                 </div>
@@ -171,7 +218,7 @@ const PlanCard = () => {
                     <div className="flex justify-between text-sm">
                         <span className="text-ink/60">Следующее списание</span>
                         <span className="text-ink font-medium">
-                            {nextBilling ? formatDate(nextBilling.next_billing_date) : 'Загрузка...'}
+                            {subscription.next_debit ? formatDate(subscription.next_debit) : 'Загрузка...'}
                         </span>
                     </div>
                 </div>
